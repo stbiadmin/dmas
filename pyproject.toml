@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dmas"
+version = "0.1.0"
+description = "Designing Multi-Agent Systems — book companion code"
+requires-python = ">=3.10"
+dependencies = [
+    "autogen-agentchat>=0.7",
+    "autogen-ext[openai]>=0.7",
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+]
+
+[project.scripts]
+dmas-ch1 = "dmas.ch1.main:cli"
+dmas-ch4 = "dmas.ch4.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
