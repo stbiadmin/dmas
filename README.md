@@ -19,8 +19,6 @@ dmas/
 │           ├── tools.py          # Tool functions (get_weather, calculate)
 │           ├── agents.py         # Assistant agent with tools, memory, streaming
 │           └── main.py           # CLI entry point for the weather/math agent
-├── ch1_scratch.py                # Original scratch exploration (Chapter 1)
-└── ch4_scratch.py                # Original scratch exploration (Chapter 4)
 ```
 
 ## Setup
