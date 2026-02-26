@@ -11,24 +11,7 @@ os.environ["PYTHONUNBUFFERED"] = "1"
 if not sys.stdout.isatty():
     sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
 
-from autogen_agentchat.ui import Console
-
-from dmas.config import get_model_client
-from dmas.ch1.agents import create_poet, create_critic
-from dmas.ch1.team import create_haiku_team
-
-
-async def run(topic: str = "Star Wars and Imperialism", model: str = "gpt-4.1-mini") -> None:
-    """Run the haiku poet/critic collaboration and stream output."""
-    model_client = get_model_client(model)
-    try:
-        poet = create_poet(model_client)
-        critic = create_critic(model_client)
-        team = create_haiku_team(poet, critic)
-        stream = team.run_stream(task=f"Write a haiku about: {topic}")
-        await Console(stream)
-    finally:
-        await model_client.close()
+from dmas.frameworks import Framework, print_banner
 
 
 def cli() -> None:
@@ -36,7 +19,24 @@ def cli() -> None:
     parser = argparse.ArgumentParser(description="Haiku poet/critic collaboration")
     parser.add_argument("--topic", default="Star Wars and Imperialism", help="Haiku topic")
     parser.add_argument("--model", default="gpt-4.1-mini", help="OpenAI model to use")
+    parser.add_argument(
+        "--framework",
+        type=Framework,
+        default=Framework.AUTOGEN,
+        choices=list(Framework),
+        help="Agent framework to use (default: autogen)",
+    )
     args = parser.parse_args()
+
+    print_banner(args.framework, "Haiku Poet/Critic Team")
+
+    if args.framework == Framework.AUTOGEN:
+        from dmas.ch1.autogen_backend import run
+    elif args.framework == Framework.AGENT_FRAMEWORK:
+        from dmas.ch1.agentframework_backend import run
+    elif args.framework == Framework.LANGGRAPH:
+        from dmas.ch1.langgraph_backend import run
+
     asyncio.run(run(topic=args.topic, model=args.model))
 
 

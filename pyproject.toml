@@ -4,15 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dmas"
-version = "0.1.0"
+version = "0.2.0"
 description = "Designing Multi-Agent Systems — book companion code"
 requires-python = ">=3.10"
 dependencies = [
-    "autogen-agentchat>=0.7",
-    "autogen-ext[openai]>=0.7",
     "python-dotenv>=1.0",
     "requests>=2.31",
 ]
+
+[project.optional-dependencies]
+autogen = ["autogen-agentchat>=0.7", "autogen-ext[openai]>=0.7"]
+agent-framework = ["agent-framework>=1.0.0rc1"]
+langgraph = ["langgraph>=0.2", "langchain-openai>=0.3"]
+all = ["dmas[autogen]", "dmas[agent-framework]", "dmas[langgraph]"]
 
 [project.scripts]
 dmas-ch1 = "dmas.ch1.main:cli"

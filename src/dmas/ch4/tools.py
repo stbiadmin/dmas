@@ -64,8 +64,74 @@ def get_location() -> str:
     return random.choice(CITIES)
 
 
+_WMO_WEATHER_CODES: dict[int, str] = {
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Foggy", 48: "Depositing rime fog",
+    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+    61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
+    77: "Snow grains", 80: "Slight rain showers", 81: "Moderate rain showers",
+    82: "Violent rain showers", 85: "Slight snow showers", 86: "Heavy snow showers",
+    95: "Thunderstorm", 96: "Thunderstorm with slight hail",
+    99: "Thunderstorm with heavy hail",
+}
+
+
+def _get_weather_wttr(city: str) -> str | None:
+    """Try wttr.in first. Returns weather string or None on failure."""
+    query = city.split(",")[0].strip()
+    url = f"https://wttr.in/{query}?format=j1"
+    try:
+        response = requests.get(url, timeout=8)
+        response.raise_for_status()
+        data = response.json()
+        current = data["current_condition"][0]
+        weather = current["weatherDesc"][0]["value"]
+        temp_f = current["temp_F"]
+        return f"The weather in {city} is {weather}, {temp_f}°F"
+    except (requests.RequestException, KeyError, IndexError):
+        return None
+
+
+def _get_weather_open_meteo(city: str) -> str | None:
+    """Fallback to Open-Meteo (geocode + forecast). Returns weather string or None."""
+    query = city.split(",")[0].strip()
+    try:
+        geo = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": query, "count": 1},
+            timeout=8,
+        )
+        geo.raise_for_status()
+        results = geo.json().get("results")
+        if not results:
+            return None
+        lat, lon = results[0]["latitude"], results[0]["longitude"]
+
+        wx = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": "temperature_2m,weathercode",
+                "temperature_unit": "fahrenheit",
+            },
+            timeout=8,
+        )
+        wx.raise_for_status()
+        current = wx.json()["current"]
+        temp_f = current["temperature_2m"]
+        code = current.get("weathercode", -1)
+        weather = _WMO_WEATHER_CODES.get(code, "Unknown")
+        return f"The weather in {city} is {weather}, {temp_f}°F"
+    except (requests.RequestException, KeyError, IndexError):
+        return None
+
+
 async def get_weather(city: str) -> str:
     """Get current weather for a city.
+
+    Tries wttr.in first, falls back to Open-Meteo if unavailable.
 
     Args:
         city: City name (e.g. "Tokyo" or "Austin, Texas, USA").
@@ -73,19 +139,13 @@ async def get_weather(city: str) -> str:
     Returns:
         A human-readable weather report string.
     """
-    # Use just the city name (before the first comma) for the API query
-    query = city.split(",")[0].strip()
-    url = f"https://wttr.in/{query}?format=j1"
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        current = data["current_condition"][0]
-        weather = current["weatherDesc"][0]["value"]
-        temp_f = current["temp_F"]
-        return f"The weather in {city} is {weather}, {temp_f}°F"
-    except requests.RequestException as exc:
-        return f"Could not fetch weather for {city}: {exc}"
+    result = _get_weather_wttr(city)
+    if result:
+        return result
+    result = _get_weather_open_meteo(city)
+    if result:
+        return result
+    return f"Could not fetch weather for {city}: both wttr.in and Open-Meteo are unavailable"
 
 
 async def calculate(expression: str) -> str:
