@@ -1,6 +1,6 @@
 # dmas
 
-Companion code for [Designing Multi-Agent Systems](https://multiagentbook.com/) by Victor Dibia. This repository re-implements the book's Chapter 1 and Chapter 4 examples as standalone applications supporting three agent frameworks: [AutoGen](https://github.com/microsoft/autogen), [Microsoft Agent Framework](https://pypi.org/project/agent-framework/), and [LangGraph](https://github.com/langchain-ai/langgraph).
+Companion code for [Designing Multi-Agent Systems](https://multiagentbook.com/) by Victor Dibia. This repository re-implements the book's Chapter 1, 4, 5, and 6 examples as standalone applications supporting three agent frameworks: [AutoGen](https://github.com/microsoft/autogen), [Microsoft Agent Framework](https://pypi.org/project/agent-framework/), and [LangGraph](https://github.com/langchain-ai/langgraph).
 
 ## Project Structure
 
@@ -18,8 +18,19 @@ dmas/
 │       │   ├── autogen_backend.py       # AutoGen implementation
 │       │   ├── agentframework_backend.py # Microsoft Agent Framework implementation
 │       │   └── langgraph_backend.py     # LangGraph implementation
-│       └── ch4/
-│           ├── tools.py                 # Framework-agnostic tool logic
+│       ├── ch4/
+│       │   ├── tools.py                 # Framework-agnostic tool logic
+│       │   ├── main.py                  # CLI entry point with --framework dispatch
+│       │   ├── autogen_backend.py       # AutoGen implementation
+│       │   ├── agentframework_backend.py # Microsoft Agent Framework implementation
+│       │   └── langgraph_backend.py     # LangGraph implementation
+│       ├── ch5/
+│       │   ├── tools.py                 # BrowserSession + Playwright tool functions
+│       │   ├── main.py                  # CLI entry point with --framework dispatch
+│       │   ├── autogen_backend.py       # AutoGen implementation
+│       │   ├── agentframework_backend.py # Microsoft Agent Framework implementation
+│       │   └── langgraph_backend.py     # LangGraph implementation
+│       └── ch6/
 │           ├── main.py                  # CLI entry point with --framework dispatch
 │           ├── autogen_backend.py       # AutoGen implementation
 │           ├── agentframework_backend.py # Microsoft Agent Framework implementation
@@ -43,6 +54,9 @@ pip install -e ".[autogen]"
 pip install -e ".[agent-framework]"
 pip install -e ".[langgraph]"
 
+# For Chapter 5 (computer use): install Playwright browser
+playwright install chromium
+
 # Set up your API key
 cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
@@ -50,7 +64,7 @@ cp .env.example .env
 
 ## Usage
 
-Both workflows accept a `--framework` flag to select the backend:
+All workflows accept a `--framework` flag to select the backend:
 
 | Flag Value          | Framework                    |
 |---------------------|------------------------------|
@@ -98,6 +112,45 @@ The `--multi-turn` flag runs a three-turn conversation:
 2. The user asks about the weather "where I live" (the agent recalls the city from context).
 3. The user asks a math question (the agent uses the calculate tool).
 
+### Chapter 5: Computer Use Agent
+
+A browser automation agent that uses Playwright to interact with web pages. The agent follows an observe-reason-act loop: it observes the page state, decides what to do, and takes one action at a time. A configurable action limit prevents runaway execution.
+
+**Requires:** `pip install 'dmas[computer-use]'` and `playwright install chromium`
+
+```bash
+# Default task: list top 5 Hacker News stories
+python -m dmas.ch5.main
+python -m dmas.ch5.main --framework agent-framework
+python -m dmas.ch5.main --framework langgraph
+
+# Custom task
+python -m dmas.ch5.main --task "Go to https://example.com and describe the page"
+
+# With visible browser (non-headless)
+python -m dmas.ch5.main --no-headless --max-actions 10
+
+# Start at a specific URL
+python -m dmas.ch5.main --url "https://example.com" --task "Find the link on this page"
+```
+
+### Chapter 6: Multi-Agent Workflow Pipeline
+
+A DAG-based research-draft-review pipeline with three specialized agents. A researcher gathers notes, a writer produces a report, and a reviewer scores it. If the score is below 8/10, the writer revises based on feedback — up to a configurable limit.
+
+```bash
+# Default topic
+python -m dmas.ch6.main
+python -m dmas.ch6.main --framework agent-framework
+python -m dmas.ch6.main --framework langgraph
+
+# Custom topic with revision limit
+python -m dmas.ch6.main --topic "benefits of exercise" --max-revisions 2
+
+# LangGraph uses a StateGraph with conditional edges (vs. ch1's MessagesState)
+python -m dmas.ch6.main --topic "space exploration" --framework langgraph
+```
+
 ### Running under `conda run`
 
 If you prefer not to activate the environment, use `--no-capture-output` so streaming displays in real time:
@@ -105,6 +158,8 @@ If you prefer not to activate the environment, use `--no-capture-output` so stre
 ```bash
 conda run --no-capture-output -n dmas python -m dmas.ch1.main --topic "the ocean at midnight"
 conda run --no-capture-output -n dmas python -m dmas.ch4.main --multi-turn --framework langgraph
+conda run --no-capture-output -n dmas python -m dmas.ch5.main --max-actions 5
+conda run --no-capture-output -n dmas python -m dmas.ch6.main --topic "benefits of exercise" --max-revisions 2
 ```
 
 ## Configuration
@@ -113,7 +168,7 @@ conda run --no-capture-output -n dmas python -m dmas.ch4.main --multi-turn --fra
 |---------------------|----------|-------------|
 | `OPENAI_API_KEY`    | Yes      | Your OpenAI API key |
 
-Both entry points accept a `--model` flag (default: `gpt-4.1-mini`).
+All entry points accept a `--model` flag (default: `gpt-4.1-mini`).
 
 ## Dependencies
 
@@ -127,6 +182,7 @@ Framework extras:
 - **`.[autogen]`**: [autogen-agentchat](https://pypi.org/project/autogen-agentchat/) >= 0.7, [autogen-ext\[openai\]](https://pypi.org/project/autogen-ext/) >= 0.7
 - **`.[agent-framework]`**: [agent-framework](https://pypi.org/project/agent-framework/) >= 1.0.0rc1
 - **`.[langgraph]`**: [langgraph](https://pypi.org/project/langgraph/) >= 0.2, [langchain-openai](https://pypi.org/project/langchain-openai/) >= 0.3
+- **`.[computer-use]`**: [playwright](https://pypi.org/project/playwright/) >= 1.40 (also run `playwright install chromium`)
 
 ## License
 

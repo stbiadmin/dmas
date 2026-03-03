@@ -131,7 +131,7 @@ def _get_weather_open_meteo(city: str) -> str | None:
 async def get_weather(city: str) -> str:
     """Get current weather for a city.
 
-    Tries wttr.in first, falls back to Open-Meteo if unavailable.
+    Tries Open-Meteo first, falls back to wttr.in if unavailable.
 
     Args:
         city: City name (e.g. "Tokyo" or "Austin, Texas, USA").
@@ -139,13 +139,13 @@ async def get_weather(city: str) -> str:
     Returns:
         A human-readable weather report string.
     """
-    result = _get_weather_wttr(city)
-    if result:
-        return result
     result = _get_weather_open_meteo(city)
     if result:
         return result
-    return f"Could not fetch weather for {city}: both wttr.in and Open-Meteo are unavailable"
+    result = _get_weather_wttr(city)
+    if result:
+        return result
+    return f"Could not fetch weather for {city}: both Open-Meteo and wttr.in are unavailable"
 
 
 async def calculate(expression: str) -> str:
