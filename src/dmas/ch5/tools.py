@@ -3,6 +3,10 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass, field
 from types import TracebackType
+from urllib.parse import urlparse as _urlparse
+
+_ALLOWED_SCHEMES = {"http", "https"}
+_BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
 
 @dataclass
@@ -46,6 +50,11 @@ async def navigate(session: BrowserSession, url: str) -> str:
     Args:
         url: The URL to navigate to (e.g. "https://example.com").
     """
+    parsed = _urlparse(url)
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        return f"Blocked: only http/https URLs allowed (got '{parsed.scheme}')"
+    if parsed.hostname in _BLOCKED_HOSTS:
+        return f"Blocked: navigation to {parsed.hostname} not allowed"
     await session.page.goto(url, wait_until="domcontentloaded")
     return f"Navigated to {url}"
 

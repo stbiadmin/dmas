@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+import math
+import operator
 import random
 
 import requests
@@ -148,6 +151,64 @@ async def get_weather(city: str) -> str:
     return f"Could not fetch weather for {city}: both Open-Meteo and wttr.in are unavailable"
 
 
+_MATH_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
+    ast.Mod: operator.mod,
+    ast.FloorDiv: operator.floordiv,
+}
+
+_UNARY_OPS = {
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+_MATH_FUNCS = {k: v for k, v in math.__dict__.items() if not k.startswith("_")}
+_MATH_FUNCS.update({"abs": abs, "round": round})
+
+_MATH_CONSTS = {k: v for k, v in _MATH_FUNCS.items() if not callable(v)}
+
+
+def _eval_node(node: ast.AST) -> float:
+    """Recursively evaluate an AST node for safe math expressions."""
+    if isinstance(node, ast.Expression):
+        return _eval_node(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+    if isinstance(node, ast.Name):
+        if node.id in _MATH_CONSTS:
+            return _MATH_CONSTS[node.id]
+        raise ValueError(f"Unknown name: {node.id}")
+    if isinstance(node, ast.BinOp):
+        op_type = type(node.op)
+        if op_type not in _MATH_OPS:
+            raise ValueError(f"Unsupported operator: {op_type.__name__}")
+        return _MATH_OPS[op_type](_eval_node(node.left), _eval_node(node.right))
+    if isinstance(node, ast.UnaryOp):
+        op_type = type(node.op)
+        if op_type not in _UNARY_OPS:
+            raise ValueError(f"Unsupported unary operator: {op_type.__name__}")
+        return _UNARY_OPS[op_type](_eval_node(node.operand))
+    if isinstance(node, ast.Call):
+        if not isinstance(node.func, ast.Name):
+            raise ValueError("Only direct function calls allowed")
+        func_name = node.func.id
+        if func_name not in _MATH_FUNCS or not callable(_MATH_FUNCS[func_name]):
+            raise ValueError(f"Unknown function: {func_name}")
+        args = [_eval_node(arg) for arg in node.args]
+        return _MATH_FUNCS[func_name](*args)
+    raise ValueError(f"Unsupported expression: {ast.dump(node)}")
+
+
+def _safe_eval(expression: str) -> float:
+    """Parse and evaluate a math expression using AST walking."""
+    tree = ast.parse(expression, mode="eval")
+    return _eval_node(tree)
+
+
 async def calculate(expression: str) -> str:
     """Evaluate a mathematical expression and return the result.
 
@@ -157,13 +218,8 @@ async def calculate(expression: str) -> str:
     Returns:
         The result of the expression as a string.
     """
-    import math
-
-    allowed_names = {k: v for k, v in math.__dict__.items() if not k.startswith("_")}
-    allowed_names["abs"] = abs
-    allowed_names["round"] = round
     try:
-        result = eval(expression, {"__builtins__": {}}, allowed_names)  # noqa: S307
+        result = _safe_eval(expression)
         return f"{expression} = {result}"
     except Exception as exc:
         return f"Error evaluating '{expression}': {exc}"
