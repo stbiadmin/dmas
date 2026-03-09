@@ -2,7 +2,7 @@
 
 This repo is intended to serve as a companion repository for a "robustification" project following [Designing Multi-Agent Systems](https://multiagentbook.com/) by Victor Dibia. 
 
-his code re-implements the core principles and examples from the book's Chapter 1, 4, 5, and 6 (so far) as standalone applications, in three different agentic frameworks: [AutoGen](https://github.com/microsoft/autogen), [Microsoft Agent Framework](https://pypi.org/project/agent-framework/), and [LangGraph](https://github.com/langchain-ai/langgraph).
+This code re-implements the core principles and examples from the book's Chapter 1, 4, 5, and 6 (so far) as standalone applications, in three different agentic frameworks: [AutoGen](https://github.com/microsoft/autogen), [Microsoft Agent Framework](https://pypi.org/project/agent-framework/), and [LangGraph](https://github.com/langchain-ai/langgraph).
 
 ## Project Structure
 
